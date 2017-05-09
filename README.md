@@ -38,3 +38,17 @@ Coding examples are available in the **doc/examples** directory.
 
 FFmpeg codebase is mainly LGPL-licensed with optional components licensed under
 GPL. Please refer to the LICENSE file for detailed information.
+
+## DJI Build Script
+DJI SDK uses FFmpeg as a static library (.so file). Our compiling processing is explained as follow:
+### Android
+The set-up :  MacBook Pro Mid 2015 15-inch,  running VMware Fusion Professional Version 8.5.6 (5234762), with image of ubuntu  ubuntu-16.04.2-desktop-amd64.iso 
+
+* Edit the first line to match your NDK location.
+* Find where `TOOLCHAINS_VERSION` was declared in the file and change it to your version. At this moment, DJI is using 4.9.
+* Also change the PLATFORM_VERSION to the latest one that comes with your Android SDK. At this moment, DJI is using 21.
+* To build the .so file of FFmpeg for Android, execute build_android.sh
+
+### iOS
+To build the .so file of FFmpeg for iOS, please execute build_iOS.sh
+
