@@ -78,7 +78,7 @@ static int h264_find_frame_end(H264Context *h, const uint8_t *buf,
                 state >>= 1;           // 2->1, 1->0, 0->0
         } else if (state <= 5) {
             int nalu_type = buf[i] & 0x1F;
-            if (nalu_type == NAL_SEI || nalu_type == NAL_SPS ||
+            if (/*nalu_type == NAL_SEI || */nalu_type == NAL_SPS ||
                 nalu_type == NAL_PPS || nalu_type == NAL_AUD) {
                 if (pc->frame_start_found) {
                     i++;
@@ -217,6 +217,8 @@ static inline int parse_nal_units(AVCodecParserContext *s,
     s->pict_type         = AV_PICTURE_TYPE_I;
     s->key_frame         = 0;
     s->picture_structure = AV_PICTURE_STRUCTURE_UNKNOWN;
+    s->frame_has_pps = 0;
+    s->frame_has_sps = 0;
 
     h->avctx = avctx;
     ff_h264_reset_sei(h);
@@ -272,9 +274,23 @@ static inline int parse_nal_units(AVCodecParserContext *s,
         switch (h->nal_unit_type) {
         case NAL_SPS:
             ff_h264_decode_seq_parameter_set(h);
+			s->frame_has_sps = 1;
+			s->width_in_pixel = h->mb_width*16;
+			s->height_in_pixel = h->mb_height*16;
+			if(h->num_units_in_tick==0 || h->time_scale==0)
+			{
+				av_log(h, AV_LOG_WARNING, "VUI timing infomation not present, set to default:29.97fps\n");
+				s->frame_rate_den = 1001;
+				s->frame_rate_num = 30000;
+			}
+			else{
+				s->frame_rate_den = h->num_units_in_tick;
+				s->frame_rate_num = h->time_scale;
+			}
             break;
         case NAL_PPS:
             ff_h264_decode_picture_parameter_set(h, h->gb.size_in_bits);
+			s->frame_has_pps = 1;
             break;
         case NAL_SEI:
             ff_h264_decode_sei(h);
@@ -291,10 +307,14 @@ static inline int parse_nal_units(AVCodecParserContext *s,
             get_ue_golomb_long(&h->gb);  // skip first_mb_in_slice
             slice_type   = get_ue_golomb_31(&h->gb);
             s->pict_type = golomb_to_pict_type[slice_type % 5];
-            if (h->sei_recovery_frame_cnt >= 0) {
+            
+            // WORKAROUND: may cause mistake in some DJI products. When framenum is 0,
+            // SEI may has flag SEI_TYPE_RECOVERY_POINT
+            //if (h->sei_recovery_frame_cnt >= 0) {
                 /* key frame, since recovery_frame_cnt is set */
-                s->key_frame = 1;
-            }
+                //s->key_frame = 1;
+            //}
+
             pps_id = get_ue_golomb(&h->gb);
             if (pps_id >= MAX_PPS_COUNT) {
                 av_log(h->avctx, AV_LOG_ERROR,
@@ -314,7 +334,8 @@ static inline int parse_nal_units(AVCodecParserContext *s,
             }
             h->sps       = *h->sps_buffers[h->pps.sps_id];
             h->frame_num = get_bits(&h->gb, h->sps.log2_max_frame_num);
-
+			s->frame_num = h->frame_num;
+			s->max_frame_num_plus1 = (1<<h->sps.log2_max_frame_num);
             if(h->sps.ref_frame_count <= 1 && h->pps.ref_count[0] <= 1 && s->pict_type == AV_PICTURE_TYPE_I)
                 s->key_frame = 1;
 

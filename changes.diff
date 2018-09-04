@@ -1,0 +1,1350 @@
+diff --git a/README.md b/README.md
+index 04089e4a1c..d23afa2574 100644
+--- a/README.md
++++ b/README.md
+@@ -38,3 +38,17 @@ Coding examples are available in the **doc/examples** directory.
+ 
+ FFmpeg codebase is mainly LGPL-licensed with optional components licensed under
+ GPL. Please refer to the LICENSE file for detailed information.
++
++## DJI Build Script
++DJI SDK uses FFmpeg as a static library (.so file). Our compiling processing is explained as follow:
++### Android
++The set-up :  MacBook Pro Mid 2015 15-inch,  running VMware Fusion Professional Version 8.5.6 (5234762), with image of ubuntu  ubuntu-16.04.2-desktop-amd64.iso 
++
++* Edit the first line to match your NDK location.
++* Find where `TOOLCHAINS_VERSION` was declared in the file and change it to your version. At this moment, DJI is using 4.9.
++* Also change the PLATFORM_VERSION to the latest one that comes with your Android SDK. At this moment, DJI is using 21.
++* To build the .so file of FFmpeg for Android, execute build_android.sh
++
++### iOS
++To build the .so file of FFmpeg for iOS, please execute build_iOS.sh
++
+diff --git a/build_android.sh b/build_android.sh
+new file mode 100644
+index 0000000000..e62f5d84d2
+--- /dev/null
++++ b/build_android.sh
+@@ -0,0 +1,804 @@
++export NDK=~/Android/Ndk14b
++#export NDK=/cygdrive/c/Users/jacky.qiu/projects/online_transcode/ndk_linux
++ 
++if [ "$NDK" = "" ]; then
++	echo NDK variable not set, exiting
++	echo "Use: export NDK=/your/path/to/android-ndk"
++	exit 1
++fi
++
++OS=`uname -s | tr '[A-Z]' '[a-z]'`
++#OS=linux
++
++function build_x264
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS=$OPTIMIZE_CFLAGS
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export AS="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog"
++
++	cd x264-amanda
++	#./configure --prefix=$(pwd)/$PREFIX --host=$ARCH-linux --disable-static $ADDITIONAL_CONFIGURE_FLAG --extra-cflags="$OPTIMIZE_CFLAGS" || exit 1
++	./configure \
++	    --cross-prefix=$CROSS_COMPILE \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ARCH-linux \
++	    --enable-pic \
++	    --enable-strip \
++	    --disable-static \
++	    --disable-shared \
++	    --disable-cli \
++	    --disable-asm \
++	    --disable-thread \
++	    --sysroot=$NDK/platforms/android-21/arch-arm \
++	    --extra-cflags="$OPTIMIZE_CFLAGS" \
++	    || exit 1
++	make clean || exit 1
++	make -j4 STRIP= install || exit 1
++	cd ..
++}
++
++function build_x264_v8
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS=$OPTIMIZE_CFLAGS
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export AS="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog"
++
++	cd x264-amanda
++	#./configure --prefix=$(pwd)/$PREFIX --host=$ARCH-linux --disable-static $ADDITIONAL_CONFIGURE_FLAG --extra-cflags="$OPTIMIZE_CFLAGS" || exit 1
++	./configure \
++	    --cross-prefix=$CROSS_COMPILE \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ABI-linux \
++	    --enable-pic \
++	    --enable-strip \
++	    --disable-static \
++	    --disable-shared \
++	    --disable-cli \
++	    --enable-asm \
++	    --disable-thread \
++	    --sysroot=$NDK/platforms/android-21/arch-arm \
++	    --extra-cflags="$OPTIMIZE_CFLAGS" \
++	    || exit 1
++	make clean || exit 1
++	make -j4 STRIP= install || exit 1
++	cd ..
++}
++
++function build_amr
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS=$OPTIMIZE_CFLAGS
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog"
++
++	cd vo-amrwbenc
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ARCH-linux \
++	    --disable-dependency-tracking \
++	    --disable-shared \
++            --disable-gpl \
++	    --disable-version3 \
++	    --disable-static \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make -j4 install || exit 1
++	cd ..
++}
++
++function build_amr_v8
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS=$OPTIMIZE_CFLAGS
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog"
++
++	cd vo-amrwbenc
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ABI-linux \
++	    --disable-dependency-tracking \
++	    --disable-shared \
++	    --disable-version3 \
++            --disable-gpl \
++	    --disable-static \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make -j4 install || exit 1
++	cd ..
++}
++function build_aac
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS=$OPTIMIZE_CFLAGS
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog"
++
++	cd vo-aacenc
++	export PKG_CONFIG_LIBDIR=$(pwd)/$PREFIX/lib/pkgconfig/
++	export PKG_CONFIG_PATH=$(pwd)/$PREFIX/lib/pkgconfig/
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ARCH-linux \
++	    --disable-dependency-tracking \
++	    --disable-shared \
++	    --disable-static \
++            --disable-gpl \
++            --disable-version3 \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make -j4 install || exit 1
++	cd ..
++}
++
++function build_aac_v8
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS=$OPTIMIZE_CFLAGS
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog"
++
++	cd vo-aacenc
++	export PKG_CONFIG_LIBDIR=$(pwd)/$PREFIX/lib/pkgconfig/
++	export PKG_CONFIG_PATH=$(pwd)/$PREFIX/lib/pkgconfig/
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ABI-linux \
++	    --disable-dependency-tracking \
++	    --disable-shared \
++	    --disable-version3 \
++            --disable-gpl \
++	    --disable-static \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make -j4 install || exit 1
++	cd ..
++}
++function build_freetype2
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS=$OPTIMIZE_CFLAGS
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -nostdlib -lc -lm -ldl -llog"
++
++	cd freetype2
++	export PKG_CONFIG_LIBDIR=$(pwd)/$PREFIX/lib/pkgconfig/
++	export PKG_CONFIG_PATH=$(pwd)/$PREFIX/lib/pkgconfig/
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ARCH-linux \
++	    --disable-dependency-tracking \
++	    --disable-shared \
++            --disable-gpl \
++	    --disable-static \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make -j4 install || exit 1
++	cd ..
++}
++
++function build_freetype2_v8
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS=$OPTIMIZE_CFLAGS
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -nostdlib -lc -lm -ldl -llog"
++
++	cd freetype2
++	export PKG_CONFIG_LIBDIR=$(pwd)/$PREFIX/lib/pkgconfig/
++	export PKG_CONFIG_PATH=$(pwd)/$PREFIX/lib/pkgconfig/
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ABI-linux \
++	    --disable-dependency-tracking \
++	    --disable-shared \
++            --disable-gpl \
++	    --disable-static \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make -j4 install || exit 1
++	cd ..
++}
++function build_ass
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS="$OPTIMIZE_CFLAGS"
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -nostdlib -lc -lm -ldl -llog"
++
++	cd libass
++	export PKG_CONFIG_LIBDIR=$(pwd)/$PREFIX/lib/pkgconfig/
++	export PKG_CONFIG_PATH=$(pwd)/$PREFIX/lib/pkgconfig/
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ARCH-linux \
++	    --disable-fontconfig \
++	    --disable-dependency-tracking \
++	    --disable-require-system-font-provider \
++	    --enable-shared \
++            --disable-gpl \
++	    --disable-static \
++	    --disable-thread \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make V=1 -j4 install || exit 1
++	cd ..
++}
++
++function build_ass_v8
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS="$OPTIMIZE_CFLAGS"
++#CFLAGS=" -I$ARM_INC -fpic -DANDROID -fpic -mthumb-interwork -ffunction-sections -funwind-tables -fstack-protector -fno-short-enums -D__ARM_ARCH_5__ -D__ARM_ARCH_5T__ -D__ARM_ARCH_5E__ -D__ARM_ARCH_5TE__  -Wno-psabi -march=armv5te -mtune=xscale -msoft-float -mthumb -Os -fomit-frame-pointer -fno-strict-aliasing -finline-limit=64 -DANDROID  -Wa,--noexecstack -MMD -MP "
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -nostdlib -lc -lm -ldl -llog"
++
++	cd libass
++	export PKG_CONFIG_LIBDIR=$(pwd)/$PREFIX/lib/pkgconfig/
++	export PKG_CONFIG_PATH=$(pwd)/$PREFIX/lib/pkgconfig/
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ABI-linux \
++	    --disable-fontconfig \
++	    --disable-dependency-tracking \
++	    --disable-require-system-font-provider \
++	    --disable-shared \
++            --disable-gpl \
++	    --disable-static \
++	    --disable-thread \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make V=1 -j4 install || exit 1
++	cd ..
++}
++function build_fribidi
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS="$OPTIMIZE_CFLAGS -std=gnu99"
++ 
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog"
++
++	cd fribidi
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ARCH-linux \
++	    --disable-bin \
++            --disable-gpl \
++	    --disable-dependency-tracking \
++	    --disable-shared \
++	    --disable-static \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make -j4 install || exit 1
++	cd ..
++}
++function build_fribidi_v8
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	export PATH=${PATH}:$PREBUILT/bin/
++	CROSS_COMPILE=$PREBUILT/bin/$EABIARCH-
++	CFLAGS="$OPTIMIZE_CFLAGS -std=gnu99"
++ 
++	export CPPFLAGS="$CFLAGS"
++	export CFLAGS="$CFLAGS"
++	export CXXFLAGS="$CFLAGS"
++	export CXX="${CROSS_COMPILE}g++ --sysroot=$PLATFORM"
++	export CC="${CROSS_COMPILE}gcc --sysroot=$PLATFORM"
++	export NM="${CROSS_COMPILE}nm"
++	export STRIP="${CROSS_COMPILE}strip"
++	export RANLIB="${CROSS_COMPILE}ranlib"
++	export AR="${CROSS_COMPILE}ar"
++	export LDFLAGS="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog"
++
++	cd fribidi
++	./configure \
++	    --prefix=$(pwd)/$PREFIX \
++	    --host=$ABI-linux \
++	    --disable-bin \
++	    --disable-dependency-tracking \
++	    --disable-shared \
++            --disable-gpl \
++	    --disable-static \
++	    --with-pic \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++
++	make clean || exit 1
++	make -j4 install || exit 1
++	cd ..
++}
++function build_ffmpeg
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	CC=$PREBUILT/bin/$EABIARCH-gcc
++	CROSS_PREFIX=$PREBUILT/bin/$EABIARCH-
++	PKG_CONFIG=${CROSS_PREFIX}pkg-config
++	if [ ! -f $PKG_CONFIG ];
++	then
++		cat > $PKG_CONFIG << EOF
++#!/bin/bash
++pkg-config \$*
++EOF
++		chmod u+x $PKG_CONFIG
++	fi
++	NM=$PREBUILT/bin/$EABIARCH-nm
++	cd ffmpeg-2.5.3
++	export PKG_CONFIG_LIBDIR=$(pwd)/$PREFIX/lib/pkgconfig/
++	export PKG_CONFIG_PATH=$(pwd)/$PREFIX/lib/pkgconfig/
++	./configure --target-os=linux \
++	    --prefix=$PREFIX \
++	    --enable-cross-compile \
++	    --extra-libs="-lgcc" \
++	    --arch=$ARCH \
++	    --cc=$CC \
++	    --cross-prefix=$CROSS_PREFIX \
++	    --nm=$NM \
++	    --sysroot=$PLATFORM \
++	    --extra-cflags=" -O3 -fpic -DANDROID -DHAVE_SYS_UIO_H=1 -Dipv6mr_interface=ipv6mr_ifindex -fasm -Wno-psabi -fno-short-enums  -fno-strict-aliasing -finline-limit=300 $OPTIMIZE_CFLAGS " \
++	    --disable-shared \
++	    --enable-static \
++	    --enable-runtime-cpudetect \
++	    --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -nostdlib -lc -lm -ldl -llog -L$PREFIX/lib -L$PREFIX/lib/pkgconfig" \
++	    --extra-cflags="-I$PREFIX/include" \
++	    --disable-programs \
++	    --enable-debug=3 \
++	    --disable-libass \
++	    --enable-libvo-aacenc \
++	    --disable-libvo-amrwbenc \
++		--disable-hwaccels \
++	    --disable-demuxers \
++			--enable-demuxer=mp4 --enable-demuxer=mov  --enable-demuxer=h264 --enable-demuxer=aac  \
++		--disable-muxers \
++			--enable-muxer=mp4 --enable-muxer=aac --enable-muxer=h264 --enable-muxer=mov   --enable-muxer=flv\
++	    --enable-protocols \
++		--disable-decoders \
++			--enable-decoder=h264 --enable-decoder=aac \
++		--disable-encoders \
++			--enable-encoder=aac\
++	    --disable-parsers \
++			--enable-parser=h264 --enable-parser=aac \
++	    --enable-bsfs \
++	    --enable-avformat \
++	    --enable-avcodec \
++	    --enable-avresample \
++		--enable-avfilter \
++	    --disable-zlib \
++	    --disable-doc \
++	    --disable-ffplay \
++	    --disable-ffmpeg \
++	    --disable-ffplay \
++	    --disable-ffprobe \
++	    --disable-ffserver \
++	    --enable-avdevice \
++	    --disable-version3 \
++	    --enable-memalign-hack \
++	    --disable-asm \
++	    --enable-pic \
++	    --enable-vda \
++	    --enable-vdpau \
++	    --enable-pthreads \
++            --disable-gpl \
++            --disable-nonfree \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++	make clean || exit 1
++	make -j4 install || exit 1
++
++	cd ..
++}
++function build_ffmpeg_v8
++{
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++	CC=$PREBUILT/bin/$EABIARCH-gcc
++	CROSS_PREFIX=$PREBUILT/bin/$EABIARCH-
++	PKG_CONFIG=${CROSS_PREFIX}pkg-config
++	if [ ! -f $PKG_CONFIG ];
++	then
++		cat > $PKG_CONFIG << EOF
++#!/bin/bash
++pkg-config \$*
++EOF
++		chmod u+x $PKG_CONFIG
++	fi
++	NM=$PREBUILT/bin/$EABIARCH-nm
++	cd ffmpeg-2.5.3
++	export PKG_CONFIG_LIBDIR=$(pwd)/$PREFIX/lib/pkgconfig/
++	export PKG_CONFIG_PATH=$(pwd)/$PREFIX/lib/pkgconfig/
++	./configure --target-os=linux \
++	    --prefix=$PREFIX \
++	    --enable-cross-compile \
++	    --extra-libs="-lgcc" \
++	    --arch=$ARCH \
++	    --cc=$CC \
++	    --cross-prefix=$CROSS_PREFIX \
++	    --nm=$NM \
++	    --sysroot=$PLATFORM \
++	    --extra-cflags=" -O3 -fpic -DANDROID -DHAVE_SYS_UIO_H=1 -Dipv6mr_interface=ipv6mr_ifindex -fasm -Wno-psabi -fno-short-enums  -fno-strict-aliasing -finline-limit=300 $OPTIMIZE_CFLAGS " \
++	    --disable-shared \
++	    --disable-static \
++	    --enable-runtime-cpudetect \
++	    --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -nostdlib -lc -lm -ldl -llog -L$PREFIX/lib -L$PREFIX/lib/pkgconfig" \
++	    --extra-cflags="-I$PREFIX/include" \
++	    --disable-programs \
++	    --enable-debug=3 \
++	    --disable-libass \
++	    --enable-libvo-aacenc \
++	    --disable-libvo-amrwbenc \
++		--disable-hwaccels \
++	    --disable-demuxers \
++			--enable-demuxer=mp4 --enable-demuxer=mov  --enable-demuxer=h264 --enable-demuxer=aac  \
++		--disable-muxers \
++			--enable-muxer=mp4 --enable-muxer=aac --enable-muxer=h264 --enable-muxer=mov   --enable-muxer=flv\
++	    --enable-protocols \
++		--disable-decoders \
++			--enable-decoder=h264 --enable-decoder=aac \
++		--disable-encoders \
++			--enable-encoder=libx264 --enable-encoder=aac\
++	    --disable-parsers \
++			--enable-parser=h264 --enable-parser=aac \
++	    --enable-bsfs \
++	    --enable-avformat \
++	    --enable-avcodec \
++	    --enable-avresample \
++		--enable-avfilter \
++	    --disable-zlib \
++	    --disable-doc \
++	    --disable-ffplay \
++	    --disable-ffmpeg \
++	    --disable-ffplay \
++	    --disable-ffprobe \
++	    --disable-ffserver \
++	    --enable-avdevice \
++	    --disable-version3 \
++	    --enable-memalign-hack \
++	    --enable-asm \
++	    --enable-pic \
++	    --enable-vda \
++	    --enable-vdpau \
++	    --enable-pthreads \
++	    --disable-libx264 \
++            --disable-gpl \
++            --disable-postproc \
++            --disable-nonfree \
++	    $ADDITIONAL_CONFIGURE_FLAG \
++	    || exit 1
++	make clean || exit 1
++	make -j4 install || exit 1
++
++	cd ..
++}
++function build_one {
++	cd ffmpeg-2.5.3
++	PLATFORM=$NDK/platforms/$PLATFORM_VERSION/arch-$ARCH/
++
++	$PREBUILT/bin/$EABIARCH-ld -rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -L$PREFIX/lib  -soname $SONAME -shared -nostdlib  -z -Bsymbolic --whole-archive --no-undefined -o $OUT_LIBRARY -lavcodec -lavformat -lavresample -lavutil -lswresample -lass -lfreetype -lfribidi -lswscale -lvo-aacenc -lvo-amrwbenc -lc -lm -lz -ldl -llog  --dynamic-linker=/system/bin/linker -zmuldefs $PREBUILT/lib/gcc/$EABIARCH/4.9.x/libgcc.a || exit 1
++	cd ..
++}
++
++
++function build_armv7 {
++	##arm v7 + neon (neon also include vfpv3-32)
++	EABIARCH=arm-linux-androideabi
++	ARCH=arm
++	CPU=armv7-a
++	OPTIMIZE_CFLAGS="-mfloat-abi=softfp -DHAVE_NEON=1 -mfpu=neon -marm -march=$CPU -mtune=cortex-a8 -mthumb -D__thumb__ #-D__ARM_ARCH_7__ -D__ARM_ARCH_7A__"
++	PREFIX=../ffmpeg-build/armeabi-v7a-neon
++	PREFIX2=../../ffmpeg-build/armeabi-v7a-neon
++	OUT_LIBRARY=../../ffmpeg-build/armeabi-v7a/libffmpeg-neon.so
++	ADDITIONAL_CONFIGURE_FLAG=--enable-neon
++	SONAME=libffmpeg-neon.so
++	TOOLCHAINS_VERSION=4.9
++	PREBUILT=$NDK/toolchains/arm-linux-androideabi-$TOOLCHAINS_VERSION/prebuilt/$OS-x86_64
++	PLATFORM_VERSION=android-21
++	build_amr
++	build_aac
++	build_fribidi
++	build_freetype2
++	build_ass
++	#build_x264
++	build_ffmpeg
++	build_one
++}
++function build_arm_v7vfpv3 {
++	##arm v7vfpv3
++	EABIARCH=arm-linux-androideabi
++	ARCH=arm
++	CPU=armv7-a
++	OPTIMIZE_CFLAGS="-mfloat-abi=softfp -mfpu=vfpv3-d16 -marm -march=$CPU -mtune=cortex-a8 -mthumb -D__thumb__ -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__"
++	PREFIX=../build_results/armeabi-v7a
++	OUT_LIBRARY=$PREFIX/libffmpeg.so
++	ADDITIONAL_CONFIGURE_FLAG=
++	SONAME=libffmpeg.so
++	TOOLCHAINS_VERSION=4.9
++	PREBUILT=$NDK/toolchains/arm-linux-androideabi-$TOOLCHAINS_VERSION/prebuilt/$OS-x86_64
++	PLATFORM_VERSION=android-21
++	
++	#vo-amrwbenc
++	build_amr
++	
++	#vo-aacenc
++	build_aac
++	
++	#fribidi
++	build_fribidi
++	
++	#freetype2	
++	build_freetype2
++	
++	#libass
++	build_ass
++	
++	#x264-20151207
++	#build_x264
++	
++	#ffmpeg-2.5.3
++	build_ffmpeg
++	
++	#ffmpeg-2.5.3
++	build_one
++}
++
++function build_x86 {
++	##x86
++	EABIARCH=i686-linux-android
++	ARCH=x86
++	OPTIMIZE_CFLAGS="-m32"
++	PREFIX=../ffmpeg-build/x86
++	OUT_LIBRARY=$PREFIX/libffmpeg.so
++	ADDITIONAL_CONFIGURE_FLAG=--disable-asm
++	SONAME=libffmpeg.so
++	PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/$OS-x86_64
++	PLATFORM_VERSION=android-21
++	build_amr
++	build_aac
++	build_fribidi
++	build_freetype2
++	build_ass
++	#build_x264
++	build_ffmpeg
++	build_one
++
++}
++
++function build_x86_64 {
++	##x86_64
++	EABIARCH=x86_64-linux-android
++	ARCH=x86_64
++	PREFIX=../ffmpeg-build/x86_64
++	OUT_LIBRARY=$PREFIX/libffmpeg.so
++	SONAME=libffmpeg.so
++	PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/$OS-x86_64
++	PLATFORM_VERSION=android-21
++	build_amr
++	build_aac
++	build_fribidi
++	build_freetype2
++	build_ass
++	#build_x264
++	build_ffmpeg
++	build_one
++
++}
++
++
++
++
++function build_armv5 {
++	##arm v5
++	EABIARCH=arm-linux-androideabi
++	ARCH=arm
++	CPU=armv5
++	OPTIMIZE_CFLAGS="-marm -march=$CPU"
++	PREFIX=../ffmpeg-build/armeabi
++	OUT_LIBRARY=$PREFIX/libffmpeg.so
++	ADDITIONAL_CONFIGURE_FLAG=
++	SONAME=libffmpeg.so
++	PREBUILT=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/$OS-x86_64
++	PLATFORM_VERSION=android-21
++	build_amr
++	build_aac
++	build_fribidi
++	build_freetype2
++	build_ass
++	build_ffmpeg
++	build_one
++}
++
++function build_armv8 {
++	##arm v8 64
++	EABIARCH=aarch64-linux-android
++	ARCH=arm64
++	ABI=aarch64
++	CPU=armv8-a
++	PREFIX=../build_results/armeabi-v8a
++	OUT_LIBRARY=$PREFIX/libffmpeg.so
++	ADDITIONAL_CONFIGURE_FLAG=
++	SONAME=libffmpeg.so
++	TOOLCHAINS_VERSION=4.9
++	PREBUILT=$NDK/toolchains/aarch64-linux-android-$TOOLCHAINS_VERSION/prebuilt/$OS-x86_64
++	PLATFORM_VERSION=android-21
++	
++	#vo-amrwbenc
++	build_amr_v8
++	
++	#vo-aacenc
++	build_aac_v8
++	
++	#fribidi
++	build_fribidi_v8
++	
++	#freetype2	
++	build_freetype2_v8
++	
++	#libass
++	build_ass_v8
++	
++	#x264-20151207
++	#build_x264_v8
++	
++	#ffmpeg-2.5.3
++	build_ffmpeg
++	
++	#ffmpeg-2.5.3
++	build_one
++}
++
++function build_all {
++	build_arm_v7vfpv3
++	build_x86
++	build_armv8
++	#build_x86_64
++}
++
++build_all
+diff --git a/build_iOS.sh b/build_iOS.sh
+new file mode 100755
+index 0000000000..ffd4df37eb
+--- /dev/null
++++ b/build_iOS.sh
+@@ -0,0 +1,161 @@
++#!/bin/sh
++
++# directories
++SOURCE="."
++FAT="FFmpeg-iOS"
++
++SCRATCH="scratch"
++# must be an absolute path
++THIN=`pwd`/"thin"
++
++#FDK_AAC=`pwd`/fdk-aac/fdk-aac-ios
++
++CONFIGURE_FLAGS="--enable-cross-compile --disable-programs \
++				 --disable-debug \
++				 	--enable-static --disable-shared \
++                 --disable-doc --disable-ffmpeg --disable-ffplay --disable-ffprobe --disable-ffserver --enable-avresample \
++                 --disable-armv6 --disable-armv6t2 \
++                 --disable-iconv --disable-bzlib \
++                 	--enable-version3 \
++                 	--enable-pthreads --disable-small \
++                 	--enable-vda --enable-vdpau --enable-asm \
++                 	--enable-pic --enable-hwaccels \
++                 	--enable-hwaccel=h264_vda --enable-hwaccel=h264_vdpau --enable-memalign-hack \
++                 --disable-decoders \
++                 	--enable-decoder=h264 --enable-decoder=aac\
++                 --disable-encoders \
++                 	--enable-encoder=aac \
++                 --disable-parsers \
++                 	--enable-parser=h264 --enable-parser=aac\
++                 --disable-filters \
++                 --disable-demuxers \
++                 	--enable-demuxer=h264 --enable-demuxer=mov --enable-demuxer=aac\
++                 --disable-muxers \
++                 	--enable-muxer=flv --enable-muxer=mp4 --enable-muxer=mov --enable-muxer=h264"
++
++if [ "$FDK_AAC" ]
++then
++	CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-libfdk-aac"
++fi
++
++ARCHS="arm64 armv7s armv7 x86_64 i386"
++
++COMPILE="y"
++LIPO="y"
++
++DEPLOYMENT_TARGET="6.0"
++
++if [ "$*" ]
++then
++	if [ "$*" = "lipo" ]
++	then
++		# skip compile
++		COMPILE=
++	else
++		ARCHS="$*"
++		if [ $# -eq 1 ]
++		then
++			# skip lipo
++			LIPO=
++		fi
++	fi
++fi
++
++if [ "$COMPILE" ]
++then
++	if [ ! `which yasm` ]
++	then
++		echo 'Yasm not found'
++		if [ ! `which brew` ]
++		then
++			echo 'Homebrew not found. Trying to install...'
++			ruby -e "$(curl -fsSL https://raw.github.com/Homebrew/homebrew/go/install)" \
++				|| exit 1
++		fi
++		echo 'Trying to install Yasm...'
++		brew install yasm || exit 1
++	fi
++	if [ ! `which gas-preprocessor.pl` ]
++	then
++		echo 'gas-preprocessor.pl not found. Trying to install...'
++		(curl -L https://github.com/libav/gas-preprocessor/raw/master/gas-preprocessor.pl \
++			-o /usr/local/bin/gas-preprocessor.pl \
++			&& chmod +x /usr/local/bin/gas-preprocessor.pl) \
++			|| exit 1
++	fi
++
++	if [ ! -r $SOURCE ]
++	then
++		echo 'FFmpeg source not found. Trying to download...'
++		curl http://www.ffmpeg.org/releases/$SOURCE.tar.bz2 | tar xj \
++			|| exit 1
++	fi
++
++	CWD=`pwd`
++	for ARCH in $ARCHS
++	do
++		echo "building $ARCH..."
++		mkdir -p "$SCRATCH/$ARCH"
++		cd "$SCRATCH/$ARCH"
++
++		CFLAGS="-arch $ARCH"
++		if [ "$ARCH" = "i386" -o "$ARCH" = "x86_64" ]
++		then
++		    PLATFORM="iPhoneSimulator"
++		    CFLAGS="$CFLAGS -mios-simulator-version-min=$DEPLOYMENT_TARGET"
++		else
++		    PLATFORM="iPhoneOS"
++		    CFLAGS="$CFLAGS -mios-version-min=$DEPLOYMENT_TARGET -mfpu=neon -fembed-bitcode-marker"
++		    #指定cortex-a9会启用neno加速，对各版本arm均有效
++		    #CONFIGURE_FLAGS="$CONFIGURE_FLAGS --cpu=cortex-a9"
++		    if [ "$ARCH" = "arm64" ]
++		    then
++		        EXPORT="GASPP_FIX_XCODE5=1"
++		    fi
++		fi
++
++		XCRUN_SDK=`echo $PLATFORM | tr '[:upper:]' '[:lower:]'`
++		CC="xcrun -sdk $XCRUN_SDK clang"
++		CXXFLAGS="$CFLAGS"
++		LDFLAGS="$CFLAGS"
++		if [ "$FDK_AAC" ]
++		then
++			CFLAGS="$CFLAGS -I$FDK_AAC/include"
++			LDFLAGS="$LDFLAGS -L$FDK_AAC/lib"
++		fi
++
++		TMPDIR=${TMPDIR/%\/} $CWD/$SOURCE/configure \
++		    --target-os=darwin \
++		    --arch=$ARCH \
++		    --cc="$CC" \
++		    $CONFIGURE_FLAGS \
++		    --extra-cflags="$CFLAGS" \
++		    --extra-cxxflags="$CXXFLAGS" \
++		    --extra-ldflags="$LDFLAGS" \
++		    --prefix="$THIN/$ARCH" \
++		|| exit 1
++
++		make -j8 install $EXPORT || exit 1
++		cd $CWD
++	done
++fi
++
++if [ "$LIPO" ]
++then
++	echo "building fat binaries..."
++	mkdir -p $FAT/lib
++	set - $ARCHS
++	CWD=`pwd`
++	cd $THIN/$1/lib
++	for LIB in *.a
++	do
++		cd $CWD
++		echo lipo -create `find $THIN -name $LIB` -output $FAT/lib/$LIB 1>&2
++		lipo -create `find $THIN -name $LIB` -output $FAT/lib/$LIB || exit 1
++	done
++
++	cd $CWD
++	cp -rf $THIN/$1/include $FAT
++fi
++
++echo Done
+\ No newline at end of file
+diff --git a/libavcodec/aacdec.c b/libavcodec/aacdec.c
+index d00b3d0d27..5bb4664c29 100644
+--- a/libavcodec/aacdec.c
++++ b/libavcodec/aacdec.c
+@@ -1080,7 +1080,8 @@ static av_cold int aac_decode_init(AVCodecContext *avctx)
+     aacdec_init(ac);
+ 
+     avctx->sample_fmt = AV_SAMPLE_FMT_FLTP;
+-
++    avctx->time_base.num=90000;
++    avctx->time_base.den=1;
+     if (avctx->extradata_size > 0) {
+         if ((ret = decode_audio_specific_config(ac, ac->avctx, &ac->oc[1].m4ac,
+                                                 avctx->extradata,
+diff --git a/libavcodec/avcodec.h b/libavcodec/avcodec.h
+index dabae1b2bd..6d6c0229dd 100644
+--- a/libavcodec/avcodec.h
++++ b/libavcodec/avcodec.h
+@@ -4347,7 +4347,16 @@ typedef struct AVCodecParserContext {
+      *
+      * For example, this corresponds to H.264 PicOrderCnt.
+      */
++	/*specific parameters export for H264 parsing, for the rest codec, 0 is default*/
+     int output_picture_number;
++	int frame_num;
++	int max_frame_num_plus1;
++	int width_in_pixel;
++	int height_in_pixel;
++	int frame_rate_num;
++	int frame_rate_den;
++	int frame_has_sps;
++	int frame_has_pps;
+ } AVCodecParserContext;
+ 
+ typedef struct AVCodecParser {
+diff --git a/libavcodec/h264.c b/libavcodec/h264.c
+index e5073089d9..c43501857f 100644
+--- a/libavcodec/h264.c
++++ b/libavcodec/h264.c
+@@ -1776,6 +1776,7 @@ static int output_frame(H264Context *h, AVFrame *dst, H264Picture *srcp)
+     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(src->format);
+     int i;
+     int ret = av_frame_ref(dst, src);
++    dst->poc = srcp->frame_num;
+     if (ret < 0)
+         return ret;
+ 
+@@ -1905,8 +1906,8 @@ static int h264_decode_frame(AVCodecContext *avctx, void *data,
+ 
+         /* Wait for second field. */
+         *got_frame = 0;
+-        if (h->next_output_pic && (
+-                                   h->next_output_pic->recovered)) {
++        if (h->next_output_pic /*&& (
++                                   h->next_output_pic->recovered)*/) {
+             if (!h->next_output_pic->recovered)
+                 h->next_output_pic->f.flags |= AV_FRAME_FLAG_CORRUPT;
+ 
+diff --git a/libavcodec/h264.h b/libavcodec/h264.h
+index cb7e6f9246..abd0206f06 100644
+--- a/libavcodec/h264.h
++++ b/libavcodec/h264.h
+@@ -765,6 +765,9 @@ typedef struct H264Context {
+     /* Motion Estimation */
+     qpel_mc_func (*qpel_put)[16];
+     qpel_mc_func (*qpel_avg)[16];
++    uint32_t num_units_in_tick;
++    uint32_t time_scale;
++    int fixed_frame_rate_flag;
+ } H264Context;
+ 
+ extern const uint8_t ff_h264_chroma_qp[7][QP_MAX_NUM + 1]; ///< One chroma qp table for each possible bit depth (8-14).
+diff --git a/libavcodec/h264_parser.c b/libavcodec/h264_parser.c
+index 6e87efabe8..13c5348ebd 100644
+--- a/libavcodec/h264_parser.c
++++ b/libavcodec/h264_parser.c
+@@ -78,7 +78,7 @@ static int h264_find_frame_end(H264Context *h, const uint8_t *buf,
+                 state >>= 1;           // 2->1, 1->0, 0->0
+         } else if (state <= 5) {
+             int nalu_type = buf[i] & 0x1F;
+-            if (nalu_type == NAL_SEI || nalu_type == NAL_SPS ||
++            if (/*nalu_type == NAL_SEI || */nalu_type == NAL_SPS ||
+                 nalu_type == NAL_PPS || nalu_type == NAL_AUD) {
+                 if (pc->frame_start_found) {
+                     i++;
+@@ -217,6 +217,8 @@ static inline int parse_nal_units(AVCodecParserContext *s,
+     s->pict_type         = AV_PICTURE_TYPE_I;
+     s->key_frame         = 0;
+     s->picture_structure = AV_PICTURE_STRUCTURE_UNKNOWN;
++    s->frame_has_pps = 0;
++    s->frame_has_sps = 0;
+ 
+     h->avctx = avctx;
+     ff_h264_reset_sei(h);
+@@ -272,9 +274,23 @@ static inline int parse_nal_units(AVCodecParserContext *s,
+         switch (h->nal_unit_type) {
+         case NAL_SPS:
+             ff_h264_decode_seq_parameter_set(h);
++			s->frame_has_sps = 1;
++			s->width_in_pixel = h->mb_width*16;
++			s->height_in_pixel = h->mb_height*16;
++			if(h->num_units_in_tick==0 || h->time_scale==0)
++			{
++				av_log(h, AV_LOG_WARNING, "VUI timing infomation not present, set to default:29.97fps\n");
++				s->frame_rate_den = 1001;
++				s->frame_rate_num = 30000;
++			}
++			else{
++				s->frame_rate_den = h->num_units_in_tick;
++				s->frame_rate_num = h->time_scale;
++			}
+             break;
+         case NAL_PPS:
+             ff_h264_decode_picture_parameter_set(h, h->gb.size_in_bits);
++			s->frame_has_pps = 1;
+             break;
+         case NAL_SEI:
+             ff_h264_decode_sei(h);
+@@ -291,10 +307,14 @@ static inline int parse_nal_units(AVCodecParserContext *s,
+             get_ue_golomb_long(&h->gb);  // skip first_mb_in_slice
+             slice_type   = get_ue_golomb_31(&h->gb);
+             s->pict_type = golomb_to_pict_type[slice_type % 5];
+-            if (h->sei_recovery_frame_cnt >= 0) {
++            
++            // WORKAROUND: may cause mistake in some DJI products. When framenum is 0,
++            // SEI may has flag SEI_TYPE_RECOVERY_POINT
++            //if (h->sei_recovery_frame_cnt >= 0) {
+                 /* key frame, since recovery_frame_cnt is set */
+-                s->key_frame = 1;
+-            }
++                //s->key_frame = 1;
++            //}
++
+             pps_id = get_ue_golomb(&h->gb);
+             if (pps_id >= MAX_PPS_COUNT) {
+                 av_log(h->avctx, AV_LOG_ERROR,
+@@ -314,7 +334,8 @@ static inline int parse_nal_units(AVCodecParserContext *s,
+             }
+             h->sps       = *h->sps_buffers[h->pps.sps_id];
+             h->frame_num = get_bits(&h->gb, h->sps.log2_max_frame_num);
+-
++			s->frame_num = h->frame_num;
++			s->max_frame_num_plus1 = (1<<h->sps.log2_max_frame_num);
+             if(h->sps.ref_frame_count <= 1 && h->pps.ref_count[0] <= 1 && s->pict_type == AV_PICTURE_TYPE_I)
+                 s->key_frame = 1;
+ 
+diff --git a/libavcodec/h264_ps.c b/libavcodec/h264_ps.c
+index 4070490e46..6bb2e1a9df 100644
+--- a/libavcodec/h264_ps.c
++++ b/libavcodec/h264_ps.c
+@@ -200,6 +200,9 @@ static inline int decode_vui_parameters(H264Context *h, SPS *sps)
+             return AVERROR_INVALIDDATA;
+         }
+         sps->fixed_frame_rate_flag = get_bits1(&h->gb);
++		h->num_units_in_tick = sps->num_units_in_tick;
++		h->time_scale = sps->time_scale;
++		h->fixed_frame_rate_flag = sps->fixed_frame_rate_flag;
+     }
+ 
+     sps->nal_hrd_parameters_present_flag = get_bits1(&h->gb);
+@@ -436,6 +439,8 @@ int ff_h264_decode_seq_parameter_set(H264Context *h)
+     sps->gaps_in_frame_num_allowed_flag = get_bits1(&h->gb);
+     sps->mb_width                       = get_ue_golomb(&h->gb) + 1;
+     sps->mb_height                      = get_ue_golomb(&h->gb) + 1;
++    h->mb_width=sps->mb_width;
++    h->mb_height=sps->mb_height;
+     if ((unsigned)sps->mb_width  >= INT_MAX / 16 ||
+         (unsigned)sps->mb_height >= INT_MAX / 16 ||
+         av_image_check_size(16 * sps->mb_width,
+diff --git a/libavcodec/utils.c b/libavcodec/utils.c
+index 410a05fda5..678d7f602e 100644
+--- a/libavcodec/utils.c
++++ b/libavcodec/utils.c
+@@ -2304,6 +2304,7 @@ static int unrefcount_frame(AVCodecInternal *avci, AVFrame *frame)
+     frame->height         = avci->to_free->height;
+     frame->channel_layout = avci->to_free->channel_layout;
+     frame->nb_samples     = avci->to_free->nb_samples;
++    frame->poc = avci->to_free->poc;
+     av_frame_set_channels(frame, av_frame_get_channels(avci->to_free));
+ 
+     return 0;
+diff --git a/libavformat/avformat.h b/libavformat/avformat.h
+index 2e54ed1f01..73bd18e865 100644
+--- a/libavformat/avformat.h
++++ b/libavformat/avformat.h
+@@ -2003,6 +2003,31 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
+ int av_probe_input_buffer(AVIOContext *pb, AVInputFormat **fmt,
+                           const char *filename, void *logctx,
+                           unsigned int offset, unsigned int max_probe_size);
++/**
++  returns the global variable to the input demuxer specified by the codec_name.
++Input:
++codec_name:
++a string name of the codec, i.e. "h264", "mp4" and "mov"
++Returns:
++unkown demuxer: NULL
++otherwise: ff_h264_demuxer for h264 raw input
++ff_mp4_demuxer for mp4 input
++ff_mov_demuxer for mpv input
++ */
++AVInputFormat *avformat_open_specific_input(char * codec_name);
++
++/**
++  returns the global variable to the output muxer specified by the codec_name.
++Input:
++codec_name:
++a string name of the codec, i.e. "h264", "mp4" and "mov"
++Returns:
++unkown muxer: NULL
++otherwise: ff_h264_muxer for h264 raw output
++ff_mp4_muxer for mp4 output
++ff_mov_muxer for mpv output
++ */
++AVOutputFormat *avformat_open_specific_output(char * codec_name);
+ 
+ /**
+  * Open an input stream and read the header. The codecs are not opened.
+diff --git a/libavformat/avio.h b/libavformat/avio.h
+index b9b4017fb3..e374beb83e 100644
+--- a/libavformat/avio.h
++++ b/libavformat/avio.h
+@@ -437,6 +437,27 @@ int avio_open2(AVIOContext **s, const char *url, int flags,
+  */
+ int avio_close(AVIOContext *s);
+ 
++/**
++ * Open the resource accessed by the AVIOContext: 
++ * The pb it openned is an empty one. Data is get from external device 
++ * which is not accessable by ffmpeg
++ *
++ * @return 0 on success, an AVERROR < 0 on error.
++ * @see avio_closep
++ */
++
++int avio_open_stream(AVIOContext **s);
++
++/**
++ * Close the resource accessed by the AVIOContext s and free it.
++ * This function can only be used if s was opened by avio_open_stream().
++ *
++ * @return 0 on success, an AVERROR < 0 on error.
++ * @see avio_closep
++ */
++int avio_close_stream(AVIOContext *s);
++
++
+ /**
+  * Close the resource accessed by the AVIOContext *s, free it
+  * and set the pointer pointing to it to NULL.
+diff --git a/libavformat/aviobuf.c b/libavformat/aviobuf.c
+index 0b0748e954..f8cddf93b6 100644
+--- a/libavformat/aviobuf.c
++++ b/libavformat/aviobuf.c
+@@ -901,6 +901,24 @@ int avio_open2(AVIOContext **s, const char *filename, int flags,
+     return 0;
+ }
+ 
++int avio_open_stream(AVIOContext **s)
++{
++    URLContext *h;
++    int err;
++    *s = av_mallocz(sizeof(AVIOContext));
++    if(*s==NULL)
++        return AVERROR(ENOMEM);
++    (*s)->seekable = 0;
++    return 0;
++}
++
++int avio_close_stream(AVIOContext *s)
++{
++    if(s)
++        av_free(s);
++    return 0;
++}
++
+ int avio_close(AVIOContext *s)
+ {
+     URLContext *h;
+diff --git a/libavformat/mux.c b/libavformat/mux.c
+index 023832c336..1fc9720ff5 100644
+--- a/libavformat/mux.c
++++ b/libavformat/mux.c
+@@ -894,6 +894,7 @@ int av_interleaved_write_frame(AVFormatContext *s, AVPacket *pkt)
+ 
+     for (;; ) {
+         AVPacket opkt;
++        av_init_packet(&opkt);
+         int ret = interleave_packet(s, &opkt, pkt, flush);
+         if (pkt) {
+             memset(pkt, 0, sizeof(*pkt));
+diff --git a/libavformat/utils.c b/libavformat/utils.c
+index 5a282a7ce7..6f5aff0fd4 100644
+--- a/libavformat/utils.c
++++ b/libavformat/utils.c
+@@ -397,6 +397,43 @@ int avformat_queue_attached_pictures(AVFormatContext *s)
+         }
+     return 0;
+ }
++extern AVInputFormat ff_h264_demuxer;
++extern AVInputFormat ff_h264_muxer;
++extern AVInputFormat ff_mov_muxer;
++extern AVInputFormat ff_mov_demuxer;
++extern AVInputFormat ff_mp4_muxer;
++
++AVInputFormat *avformat_open_specific_input(char * codec_name)
++{
++    if(!strcmp(codec_name, "h264"))
++    {
++        return &ff_h264_demuxer;
++    }
++    else if(!strcmp(codec_name, "mov") ||!strcmp(codec_name, "mp4"))
++    {
++        return &ff_mov_demuxer;
++    }
++
++    return NULL;
++}
++
++AVOutputFormat *avformat_open_specific_output(char * codec_name)
++{
++    if(!strcmp(codec_name, "h264"))
++    {
++        return &ff_h264_muxer;
++    }
++    else if(!strcmp(codec_name, "mp4"))
++    {
++        return &ff_mp4_muxer;
++    }
++    else if(!strcmp(codec_name, "mov"))
++    {
++        return &ff_mov_muxer;
++    }
++
++    return NULL;
++}
+ 
+ int avformat_open_input(AVFormatContext **ps, const char *filename,
+                         AVInputFormat *fmt, AVDictionary **options)
+diff --git a/libavutil/frame.h b/libavutil/frame.h
+index d335bee831..e9d1fa1fd4 100644
+--- a/libavutil/frame.h
++++ b/libavutil/frame.h
+@@ -562,6 +562,7 @@ typedef struct AVFrame {
+      * Not to be accessed directly from outside libavutil
+      */
+     AVBufferRef *qp_table_buf;
++    int poc;
+ } AVFrame;
+ 
+ /**

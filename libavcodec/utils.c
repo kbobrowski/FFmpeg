@@ -2304,6 +2304,7 @@ static int unrefcount_frame(AVCodecInternal *avci, AVFrame *frame)
     frame->height         = avci->to_free->height;
     frame->channel_layout = avci->to_free->channel_layout;
     frame->nb_samples     = avci->to_free->nb_samples;
+    frame->poc = avci->to_free->poc;
     av_frame_set_channels(frame, av_frame_get_channels(avci->to_free));
 
     return 0;

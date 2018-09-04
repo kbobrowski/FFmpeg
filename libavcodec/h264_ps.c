@@ -200,6 +200,9 @@ static inline int decode_vui_parameters(H264Context *h, SPS *sps)
             return AVERROR_INVALIDDATA;
         }
         sps->fixed_frame_rate_flag = get_bits1(&h->gb);
+		h->num_units_in_tick = sps->num_units_in_tick;
+		h->time_scale = sps->time_scale;
+		h->fixed_frame_rate_flag = sps->fixed_frame_rate_flag;
     }
 
     sps->nal_hrd_parameters_present_flag = get_bits1(&h->gb);
@@ -436,6 +439,8 @@ int ff_h264_decode_seq_parameter_set(H264Context *h)
     sps->gaps_in_frame_num_allowed_flag = get_bits1(&h->gb);
     sps->mb_width                       = get_ue_golomb(&h->gb) + 1;
     sps->mb_height                      = get_ue_golomb(&h->gb) + 1;
+    h->mb_width=sps->mb_width;
+    h->mb_height=sps->mb_height;
     if ((unsigned)sps->mb_width  >= INT_MAX / 16 ||
         (unsigned)sps->mb_height >= INT_MAX / 16 ||
         av_image_check_size(16 * sps->mb_width,

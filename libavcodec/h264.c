@@ -1776,6 +1776,7 @@ static int output_frame(H264Context *h, AVFrame *dst, H264Picture *srcp)
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(src->format);
     int i;
     int ret = av_frame_ref(dst, src);
+    dst->poc = srcp->frame_num;
     if (ret < 0)
         return ret;
 
@@ -1905,8 +1906,8 @@ static int h264_decode_frame(AVCodecContext *avctx, void *data,
 
         /* Wait for second field. */
         *got_frame = 0;
-        if (h->next_output_pic && (
-                                   h->next_output_pic->recovered)) {
+        if (h->next_output_pic /*&& (
+                                   h->next_output_pic->recovered)*/) {
             if (!h->next_output_pic->recovered)
                 h->next_output_pic->f.flags |= AV_FRAME_FLAG_CORRUPT;
 

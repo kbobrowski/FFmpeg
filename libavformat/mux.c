@@ -894,6 +894,7 @@ int av_interleaved_write_frame(AVFormatContext *s, AVPacket *pkt)
 
     for (;; ) {
         AVPacket opkt;
+        av_init_packet(&opkt);
         int ret = interleave_packet(s, &opkt, pkt, flush);
         if (pkt) {
             memset(pkt, 0, sizeof(*pkt));

@@ -1080,7 +1080,8 @@ static av_cold int aac_decode_init(AVCodecContext *avctx)
     aacdec_init(ac);
 
     avctx->sample_fmt = AV_SAMPLE_FMT_FLTP;
-
+    avctx->time_base.num=90000;
+    avctx->time_base.den=1;
     if (avctx->extradata_size > 0) {
         if ((ret = decode_audio_specific_config(ac, ac->avctx, &ac->oc[1].m4ac,
                                                 avctx->extradata,

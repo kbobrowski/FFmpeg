@@ -397,6 +397,43 @@ int avformat_queue_attached_pictures(AVFormatContext *s)
         }
     return 0;
 }
+extern AVInputFormat ff_h264_demuxer;
+extern AVInputFormat ff_h264_muxer;
+extern AVInputFormat ff_mov_muxer;
+extern AVInputFormat ff_mov_demuxer;
+extern AVInputFormat ff_mp4_muxer;
+
+AVInputFormat *avformat_open_specific_input(char * codec_name)
+{
+    if(!strcmp(codec_name, "h264"))
+    {
+        return &ff_h264_demuxer;
+    }
+    else if(!strcmp(codec_name, "mov") ||!strcmp(codec_name, "mp4"))
+    {
+        return &ff_mov_demuxer;
+    }
+
+    return NULL;
+}
+
+AVOutputFormat *avformat_open_specific_output(char * codec_name)
+{
+    if(!strcmp(codec_name, "h264"))
+    {
+        return &ff_h264_muxer;
+    }
+    else if(!strcmp(codec_name, "mp4"))
+    {
+        return &ff_mp4_muxer;
+    }
+    else if(!strcmp(codec_name, "mov"))
+    {
+        return &ff_mov_muxer;
+    }
+
+    return NULL;
+}
 
 int avformat_open_input(AVFormatContext **ps, const char *filename,
                         AVInputFormat *fmt, AVDictionary **options)

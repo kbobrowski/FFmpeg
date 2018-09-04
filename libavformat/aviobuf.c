@@ -901,6 +901,24 @@ int avio_open2(AVIOContext **s, const char *filename, int flags,
     return 0;
 }
 
+int avio_open_stream(AVIOContext **s)
+{
+    URLContext *h;
+    int err;
+    *s = av_mallocz(sizeof(AVIOContext));
+    if(*s==NULL)
+        return AVERROR(ENOMEM);
+    (*s)->seekable = 0;
+    return 0;
+}
+
+int avio_close_stream(AVIOContext *s)
+{
+    if(s)
+        av_free(s);
+    return 0;
+}
+
 int avio_close(AVIOContext *s)
 {
     URLContext *h;

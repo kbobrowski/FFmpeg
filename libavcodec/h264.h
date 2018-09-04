@@ -765,6 +765,9 @@ typedef struct H264Context {
     /* Motion Estimation */
     qpel_mc_func (*qpel_put)[16];
     qpel_mc_func (*qpel_avg)[16];
+    uint32_t num_units_in_tick;
+    uint32_t time_scale;
+    int fixed_frame_rate_flag;
 } H264Context;
 
 extern const uint8_t ff_h264_chroma_qp[7][QP_MAX_NUM + 1]; ///< One chroma qp table for each possible bit depth (8-14).
